@@ -1,5 +1,5 @@
-import datetime
 import os
+import datetime
 import traceback
 from functools import wraps
 
@@ -107,21 +107,9 @@ def signup():
             flash("You must accept the Terms and Conditions and Privacy Policy to sign up.")
             return render_template("signup.html")
 
-        # === PASSWORD STRENGTH VALIDATION ===
-        if len(password) < 6:
-            flash("Password must be at least 6 characters long.")
-            return render_template("signup.html")
-        
-        if not any(char.isdigit() for char in password):
-            flash("Password must contain at least one number.")
-            return render_template("signup.html")
-        
-        if not any(char.isalpha() for char in password):
-            flash("Password must contain at least one letter.")
-            return render_template("signup.html")
-
         db = get_db()
         try:
+            # Hash the password before saving
             hashed_password = generate_password_hash(password)
             
             db.execute(
@@ -131,9 +119,11 @@ def signup():
             db.commit()
             flash("Account created successfully! Please login.")
             return redirect(url_for("login"))
-        except Exception:
+        except Exception as e:
+            print(e)
             flash("Username or email already exists")
     return render_template("signup.html")
+
 @app.route("/terms")
 def terms():
     return render_template("terms.html")
@@ -844,7 +834,6 @@ def close_db(exception=None):
     if db is not None:
         db.close()
 
-
 if __name__ == "__main__":
-    socketio.run(app, debug=True, host="127.0.0.1", port=5000)
-
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=False)
