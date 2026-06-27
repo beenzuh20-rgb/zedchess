@@ -90,13 +90,15 @@ timer_thread.start()
 @socketio.on("connect")
 def handle_connect():
     if "user_id" in session:
-        connected_users[session["user_id"]] = session["username"]
-
-        join_room(f"user_{session['user_id']}")
-
+        user_id = session["user_id"]
+        username = session.get("username")
+        
+        connected_users[user_id] = username
+        join_room(f"user_{user_id}")   # ← Very important
+        
+        print(f"User {username} joined user_{user_id} room")
+        
         socketio.emit("online_users", list(connected_users.values()))
-
-
 # =========================
 # INIT DATABASE
 # =========================
