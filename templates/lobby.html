@@ -171,26 +171,20 @@
 <script>
 const socket = io();
 
-socket.on("new_challenge", function(data) {
-    alert(
-        "New challenge from " +
-        data.from +
-        ". Refresh the page to Accept or Decline."
-    );
-    location.reload();
-});
-
-socket.on("online_users", function(users) {
-    console.log("Online:", users);
-});
-// when someone accepts your challenge, redirect to the game
 socket.on("challenge_accepted", function(data) {
-    alert(data.from + " accepted your challenge!");
+    console.log("Challenge accepted event received:", data);
+    
     if (data.game_id) {
-        window.location.href = '/game/' + data.game_id;
+        // Better user experience
+        const message = data.from + " has accepted your challenge! Taking you to the game...";
+        alert(message);
+        
+        // Small delay to let alert show
+        setTimeout(() => {
+            window.location.href = '/game/' + data.game_id;
+        }, 800);
     }
 });
 </script>
-
 </body>
 </html>
