@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile - ZedChess</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="profile-header">
+            <div>
+                <h1>Welcome back, {{ user['username'] }}!</h1>
+                <p class="subheading">Your account details and wallet controls are ready.</p>
+            </div>
+            <div class="profile-actions">
+                <a href="{{ url_for('lobby') }}" class="btn secondary">Go to Lobby</a>
+                <a href="{{ url_for('logout') }}" class="btn secondary">Logout</a>
+            </div>
+        </div>
+
+        <div class="card profile-card">
+            <div class="profile-summary">
+                <div>
+                    <h3>Wallet Balance</h3>
+                    <p class="profile-value">K{{ user['wallet']|round(2) }}</p>
+                </div>
+                <div>
+                    <h3>Username</h3>
+                    <p class="profile-value">{{ user['username'] }}</p>
+                </div>
+            </div>
+
+            <div class="profile-deposit">
+                <h3>Add Test Money (Dev)</h3>
+                <form method="POST" action="{{ url_for('add_money') }}" class="deposit-form">
+                    <input type="number" name="amount" value="50" step="0.5" min="1">
+                    <button type="submit">DEPOSITE</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

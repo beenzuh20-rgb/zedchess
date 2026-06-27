@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <title>Game #{{ game['id'] }} - ZedChess</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .game-grid {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(240px, 360px);
+            gap: 20px;
+            align-items: start;
+            justify-content: center;
+        }
+
+        .game-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .captures,
+        .timers,
+        .game-info,
+        .scoreboard {
+            background-color: #242424;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .timers div,
+        .captures div,
+        .scoreboard div {
+            margin-bottom: 10px;
+        }
+
+        .scoreboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .scoreboard .score-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.95rem;
+        }
+
+        .scoreboard .score-item strong {
+            color: #00cc66;
+        }
+
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(50px, 1fr));
+            width: min(100%, 600px);
+            aspect-ratio: 1 / 1;
+            border: 15px solid #0b3d1f;
+            margin: 0 auto;
+        }
+
+        .square {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            font-size: min(3.5rem, 4vw);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .square .coord {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            font-size: 0.75rem;
+            color: rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+        }
+
+        /* Green chess board */
+        .light {
+            background-color: #eeeed2;
+        }
+
+        .dark {
+            background-color: #769656;
+        }
+
+        /* White pieces */
+        .white-piece {
+            color: white;
+            text-shadow: 2px 2px 3px black;
+        }
+
+        /* Black pieces */
+        .black-piece {
+            color: black;
+        }
+
+        .selected {
+            outline: 4px solid gold;
+        }
+
+        .game-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .game-buttons button {
+            background-color: #00cc66;
+            color: #121212;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 820px) {
+            .game-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* === 3D ZAMBIAN KNIGHT LOGO === */
+.zed-knight-logo {
+    filter: 
+        drop-shadow(4px 10px 15px rgba(0, 0, 0, 0.7))
+        drop-shadow(0 0 20px rgba(255, 140, 0, 0.7))
+        brightness(1.25)
+        contrast(1.3)
+        hue-rotate(92deg)
+        saturate(2.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 8px;
+}
+
+.zed-knight-logo:hover {
+    transform: scale(1.15) rotate(12deg) translateY(-5px);
+    filter: 
+        drop-shadow(6px 14px 22px rgba(0, 0, 0, 0.8))
+        drop-shadow(0 0 30px rgba(255, 140, 0, 0.9))
+        brightness(1.35)
+        hue-rotate(80deg)
+        saturate(2.5);
+}
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
+             alt="ZedChess" 
+             class="zed-knight-logo"
+             style="width: 90px; height: 90px;">
+        <h1 style="margin: 10px 0 5px 0; color: #00ff9d;">ZedChess</h1>
+    </div>
+    <!-- ================================= -->
+
+<h1>♟ Game Started!</h1>
+    <h2>
+        {{ game['p1_name'] }} 
+        VS 
+        {{ game['p2_name'] }}
+    </h2>
+
+    <p>Stake: K{{ game['bet'] }}</p>
+
+
+    <div class="flash">
+        🔥 Match is LIVE
+    </div>
+
+
+    <p>
+        <strong>{{ game['p1_name'] }}</strong> (White) 
+        vs 
+        <strong>{{ game['p2_name'] }}</strong> (Black)
+    </p>
+
+
+    <p>Stake: K{{ game['bet'] }}</p>
+
+
+    <div class="game-grid">
+        <div class="game-panel">
+            <div class="chessboard" id="board"></div>
+            <div class="game-buttons">
+                <form id="forfeitForm" action="{{ url_for('forfeit', game_id=game['id']) }}" method="post">
+                    <button type="submit">Forfeit</button>
+                </form>
+                <form id="backToLobbyForm" action="{{ url_for('forfeit', game_id=game['id']) }}" method="post">
+                    <button type="submit">Back to Lobby</button>
+                </form>
+            </div>
+        </div>
+        <div class="game-panel">
+            <div class="captures">
+                <div><strong>White captured:</strong> <span id="whiteCaptures"></span></div>
+                <div><strong>Black captured:</strong> <span id="blackCaptures"></span></div>
+            </div>
+            <div class="timers">
+                <div><strong>Your color:</strong> <span id="myColor"></span></div>
+                <div><strong>White time:</strong> <span id="whiteTime"></span></div>
+                <div><strong>Black time:</strong> <span id="blackTime"></span></div>
+            </div>
+            <div class="scoreboard">
+                <div class="score-item">
+                    <strong>Game ID</strong>
+                    <span>{{ game['id'] }}</span>
+                </div>
+                <div class="score-item">
+                    <strong>Stake</strong>
+                    <span>K{{ game['bet'] }}</span>
+                </div>
+                <div class="score-item">
+                    <strong>Turn</strong>
+                    <span id="scoreTurn"></span>
+                </div>
+                <div class="score-item">
+                    <strong>Status</strong>
+                    <span id="scoreStatus"></span>
+                </div>
+            </div>
+            <div class="game-info">
+                <p id="turnInfo"></p>
+                <p id="statusInfo"></p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const boardDiv = document.getElementById('board');
+const turnInfo = document.getElementById('turnInfo');
+const statusInfo = document.getElementById('statusInfo');
+const scoreTurn = document.getElementById('scoreTurn');
+const scoreStatus = document.getElementById('scoreStatus');
+const FILES = 'abcdefgh';
+
+let fen = {{ game["board_state"]|tojson }};
+let gameTurn = {{ game["current_turn"]|tojson }};
+let gameStatus = 'active';
+let gameResult = null;
+let whiteTime = {{ game['white_time']|tojson }};
+let blackTime = {{ game['black_time']|tojson }};
+let turnStart = Date.now();
+
+const socket = io();
+const GAME_ID = {{ game['id']|tojson }};
+const MY_ID = {{ session['user_id']|tojson }};
+const WHITE_ID = {{ game['player1_id']|tojson }};
+const MY_COLOR = Number(MY_ID) === Number(WHITE_ID) ? 'white' : 'black';
+let selectedSquare = null;
+
+const forfeitForm = document.getElementById('forfeitForm');
+if (forfeitForm) {
+    forfeitForm.addEventListener('submit', (event) => {
+        const confirmed = confirm('Are you sure you want to forfeit? This cannot be undone.');
+        if (!confirmed) {
+            event.preventDefault();
+        }
+    });
+}
+
+const backToLobbyForm = document.getElementById('backToLobbyForm');
+if (backToLobbyForm) {
+    backToLobbyForm.addEventListener('submit', (event) => {
+        const confirmed = confirm('Leaving the game will forfeit and end it. Do you want to continue?');
+        if (!confirmed) {
+            event.preventDefault();
+        }
+    });
+}
+
+function updateStatus() {
+    turnInfo.textContent = `You are ${MY_COLOR}. Current turn: ${gameTurn}.`;
+    statusInfo.textContent = gameStatus === 'active'
+        ? `Game is live. Play your move.`
+        : `Game finished: ${gameResult || 'ended'}`;
+    document.getElementById('myColor').textContent = MY_COLOR;
+    document.getElementById('whiteTime').textContent = formatTime(whiteTime);
+    document.getElementById('blackTime').textContent = formatTime(blackTime);
+    if (scoreTurn) {
+        scoreTurn.textContent = gameTurn;
+    }
+    if (scoreStatus) {
+        scoreStatus.textContent = gameStatus === 'active' ? 'Live' : gameResult || 'Finished';
+    }
+}
+
+function formatTime(sec){
+    const m = Math.floor(sec/60).toString().padStart(2,'0');
+    const s = Math.floor(sec%60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+}
+
+socket.on('connect', () => {
+    console.log('Socket connected to game server');
+    socket.emit('join_game', { game_id: GAME_ID });
+});
+
+socket.on('disconnect', () => {
+    console.log('Socket disconnected');
+});
+
+socket.on('connect_error', (error) => {
+    console.error('Socket connect error:', error);
+});
+
+socket.on('move_made', (data) => {
+    fen = data.fen;
+    gameTurn = data.next_turn;
+    gameStatus = data.status;
+    gameResult = data.result;
+    // update timers if sent
+    if (data.white_time !== undefined) whiteTime = data.white_time;
+    if (data.black_time !== undefined) blackTime = data.black_time;
+    renderBoard();
+    updateStatus();
+
+    updateCapturedPieces();
+
+    if (data.check) {
+        alert('CHECK!');
+    }
+    if (data.checkmate || data.stalemate) {
+        alert(data.result);
+    }
+    turnStart = Date.now();
+});
+
+socket.on('game_over', (data) => {
+    gameStatus = 'finished';
+    gameResult = data.reason;
+    updateStatus();
+
+    if (data.loser_id !== undefined && data.winner_id !== undefined && data.bet !== undefined) {
+        if (Number(MY_ID) === Number(data.loser_id)) {
+            alert('Game over: you have forfeited the game, you lose!');
+        } else if (Number(MY_ID) === Number(data.winner_id)) {
+            alert(`Game over: ${data.reason}. You win K${data.bet}!`);
+        } else {
+            alert(`Game over: ${data.reason}`);
+        }
+    } else {
+        alert(`Game over: ${data.reason}`);
+    }
+});
+
+socket.on('invalid_move', (data) => {
+    alert(data.reason);
+});
+
+function buildBoardMatrix() {
+    const ranks = fen.split(' ')[0].split('/');
+    const matrix = [];
+    for (const rankStr of ranks) {
+        const row = [];
+        for (const char of rankStr) {
+            if (!isNaN(char)) {
+                const count = parseInt(char, 10);
+                for (let i = 0; i < count; i++) {
+                    row.push('');
+                }
+            } else {
+                row.push(char);
+            }
+        }
+        matrix.push(row);
+    }
+    return matrix;
+}
+
+function renderBoard() {
+    boardDiv.innerHTML = '';
+    const boardMatrix = buildBoardMatrix();
+    const flipped = MY_COLOR === 'black';
+    const rankOrder = flipped ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
+    const fileOrder = flipped ? [...FILES].reverse() : [...FILES];
+
+    for (const rank of rankOrder) {
+        for (const fileChar of fileOrder) {
+            const fileIndex = FILES.indexOf(fileChar);
+            const rankIndex = 8 - rank;
+            const piece = boardMatrix[rankIndex][fileIndex] || '';
+            createSquare(piece, rank, fileIndex, fileChar);
+        }
+    }
+}
+
+function createSquare(piece, rank, fileIndex, fileChar) {
+    const square = document.createElement('div');
+    const isLight = ((rank + fileIndex) % 2) === 0;
+    square.className = `square ${isLight ? 'light' : 'dark'}`;
+    const squareName = `${fileChar}${rank}`;
+    square.dataset.square = squareName;
+    square.dataset.piece = piece || '';
+    square.title = squareName;
+
+    const pieces = {
+        K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
+        k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟'
+    };
+
+    const coordSpan = document.createElement('span');
+    coordSpan.className = 'coord';
+    coordSpan.textContent = squareName;
+    square.appendChild(coordSpan);
+
+    if (pieces[piece]) {
+        square.appendChild(document.createTextNode(pieces[piece]));
+    }
+
+    if (piece && 'KQRBNP'.includes(piece)) {
+        square.classList.add('white-piece');
+    }
+    if (piece && 'kqrbnp'.includes(piece)) {
+        square.classList.add('black-piece');
+    }
+
+    square.addEventListener('click', () => {
+        if (gameStatus !== 'active') return;
+
+        // selecting own piece
+        if (!selectedSquare) {
+            if (!piece) return;
+            if ((MY_COLOR === 'white' && piece === piece.toLowerCase()) || (MY_COLOR === 'black' && piece === piece.toUpperCase())) {
+                alert('Please select your own piece.');
+                return;
+            }
+            selectedSquare = square;
+            square.classList.add('selected');
+            return;
+        }
+
+        // second click: make move
+        const from = selectedSquare.dataset.square;
+        const to = square.dataset.square;
+        selectedSquare.classList.remove('selected');
+        const fromPiece = selectedSquare.dataset.piece;
+        selectedSquare = null;
+
+        if (from && to && from !== to) {
+            if (MY_COLOR !== gameTurn) { alert('Not your turn yet.'); return; }
+            const elapsed = Math.floor((Date.now() - turnStart) / 1000);
+            const movePayload = { game_id: GAME_ID, move: `${from}${to}`, elapsed: elapsed };
+            console.log('emitting move', movePayload);
+            socket.emit('make_move', movePayload, (response) => {
+                if (response && response.error) {
+                    alert(response.error);
+                }
+            });
+        }
+    });
+
+    boardDiv.appendChild(square);
+}
+
+function updateCapturedPieces(){
+    // compute captured pieces by comparing counts to starting position
+    const startCounts = {P:8,R:2,N:2,B:2,Q:1,K:1, p:8,r:2,n:2,b:2,q:1,k:1};
+    const curCounts = {};
+    const fenPieces = fen.split(' ')[0];
+    for (let ch of fenPieces){ if (/[A-Za-z]/.test(ch)){ curCounts[ch] = (curCounts[ch]||0)+1; } }
+    const whiteCaptured = [];
+    const blackCaptured = [];
+    for (let p of Object.keys(startCounts)){
+        const have = curCounts[p]||0;
+        const missing = startCounts[p]-have;
+        if (missing>0){
+            if (p === p.toUpperCase()){
+                whiteCaptured.push(p.repeat(missing));
+            } else {
+                blackCaptured.push(p.repeat(missing));
+            }
+        }
+    }
+    // render as unicode
+    const map = {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+    document.getElementById('whiteCaptures').textContent = whiteCaptured.map(s=>map[s[0]]||s[0]).join(' ');
+    document.getElementById('blackCaptures').textContent = blackCaptured.map(s=>map[s[0]]||s[0]).join(' ');
+}
+
+updateStatus();
+renderBoard();
+updateCapturedPieces();
+</script>
+
+</body>
+</html>

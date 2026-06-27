@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game #{{ game['id'] }} - ZedChess</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 70px);
+            border: 15px solid #0b3d1f;
+            margin: 20px auto;
+            width: fit-content;
+        }
+
+
+        .square {
+            width: 70px;
+            height: 70px;
+            font-size: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+
+        /* GREEN BOARD */
+
+        .light {
+            background-color: #eeeed2;
+        }
+
+
+        .dark {
+            background-color: #769656;
+        }
+
+
+
+        /* PIECE COLORS */
+
+        .white-piece {
+
+            color: white;
+            text-shadow: 2px 2px 3px black;
+
+        }
+
+
+        .black-piece {
+
+            color: black;
+
+        }
+
+        /* === 3D ZAMBIAN KNIGHT LOGO === */
+.zed-knight-logo {
+    filter: 
+        drop-shadow(4px 10px 15px rgba(0, 0, 0, 0.7))
+        drop-shadow(0 0 20px rgba(255, 140, 0, 0.7))
+        brightness(1.25)
+        contrast(1.3)
+        hue-rotate(92deg)
+        saturate(2.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 8px;
+}
+
+.zed-knight-logo:hover {
+    transform: scale(1.15) rotate(12deg) translateY(-5px);
+    filter: 
+        drop-shadow(6px 14px 22px rgba(0, 0, 0, 0.8))
+        drop-shadow(0 0 30px rgba(255, 140, 0, 0.9))
+        brightness(1.35)
+        hue-rotate(80deg)
+        saturate(2.5);
+}
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
+             alt="ZedChess" 
+             class="zed-knight-logo"
+             style="width: 90px; height: 90px;">
+        <h1 style="margin: 10px 0 5px 0; color: #00ff9d;">ZedChess</h1>
+    </div>
+    <!-- ================================= -->
+
+<h1>♟ Game Started!</h1>
+
+
+<h2>
+{{ game['p1_name'] }} 
+VS 
+{{ game['p2_name'] }}
+</h2>
+
+
+<p>Stake: K{{ game['bet'] }}</p>
+
+
+<div class="flash">
+🔥 Match is LIVE
+</div>
+
+
+<p>
+<strong>{{ game['p1_name'] }}</strong> (White)
+vs
+<strong>{{ game['p2_name'] }}</strong> (Black)
+</p>
+
+
+
+<div class="chessboard" id="board"></div>
+
+
+
+<br>
+
+<a href="{{ url_for('lobby') }}">
+← Back to Lobby
+</a>
+
+
+</div>
+
+
+
+
+<script>
+
+
+const boardDiv = document.getElementById("board");
+
+
+const fen = "{{ board.fen() }}";
+
+
+
+const pieces = {
+
+
+'K':'♔',
+'Q':'♕',
+'R':'♖',
+'B':'♗',
+'N':'♘',
+'P':'♙',
+
+'k':'♚',
+'q':'♛',
+'r':'♜',
+'b':'♝',
+'n':'♞',
+'p':'♟'
+
+
+};
+
+
+
+
+
+function renderBoard(){
+
+
+boardDiv.innerHTML="";
+
+
+const ranks = fen.split(" ")[0].split("/");
+
+
+let rankNum = 7;
+
+
+
+for(let rank of ranks){
+
+
+let file = 0;
+
+
+
+for(let char of rank){
+
+
+
+if(!isNaN(char)){
+
+
+
+for(let i=0;i<parseInt(char);i++){
+
+
+createSquare("",rankNum,file);
+
+file++;
+
+
+}
+
+
+}
+
+else{
+
+
+createSquare(char,rankNum,file);
+
+file++;
+
+
+}
+
+
+}
+
+
+rankNum--;
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+function createSquare(piece,rank,file){
+
+
+const square = document.createElement("div");
+
+
+
+square.className =
+"square " + (((rank + file) % 2 === 0) ? "light":"dark");
+
+
+
+square.textContent = pieces[piece] || "";
+
+
+
+
+if("KQRBNP".includes(piece)){
+
+
+square.classList.add("white-piece");
+
+
+}
+
+
+
+if("kqrbnp".includes(piece)){
+
+
+square.classList.add("black-piece");
+
+
+}
+
+
+
+boardDiv.appendChild(square);
+
+
+
+}
+
+
+
+
+renderBoard();
+
+
+
+</script>
+
+
+</body>
+</html>

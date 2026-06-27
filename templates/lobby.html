@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ZedChess Lobby</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="container">
+
+              <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
+    <div class="lobby-topbar">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
+                 alt="ZedChess" 
+                 class="zed-knight-logo"
+                 style="width: 80px; height: 80px;">
+            <div>
+                <h1 style="margin: 0; color: #00ff9d;">ZedChess Lobby</h1>
+                <p class="subheading">Invite players, launch open matches, and manage your current challenges.</p>
+            </div>
+        </div>
+        <a href="{{ url_for('profile') }}" class="btn secondary">← Back To Profile</a>
+    </div>
+    <!-- ============================================ -->
+    <!-- ============================================ -->
+
+    <div class="lobby-grid">
+        <div class="lobby-panel">
+            <div class="card invite-card">
+                <h3>Invite a specific player</h3>
+                <form method="POST" action="{{ url_for('invite_player') }}">
+                    <input type="text" name="target_username" placeholder="Username to invite" required>
+                    <input type="number" name="stake" min="1" value="10" step="1" required>
+                    <button type="submit">Send Invite</button>
+                </form>
+            </div>
+
+            <div class="card open-challenge-card">
+                <h3>Create Open Challenge</h3>
+                <form method="POST" action="{{ url_for('create_challenge') }}">
+                    <input type="number"
+                           name="stake"
+                           min="1"
+                           value="10"
+                           step="1"
+                           required>
+                    <button type="submit">
+                        ⚔ Create Open Challenge
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="lobby-panel">
+            <div class="card search-card">
+                <h3>Search Online Players</h3>
+                <form class="search-panel" method="get" action="{{ url_for('lobby') }}">
+                    <input id="playerSearch" name="search" type="search" placeholder="Search online players" autocomplete="off" value="{{ search }}">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <h3 id="welcome"></h3>
+
+<section class="card incoming-challenges-card">
+    <div class="section-header">
+        <h3>📨 Incoming Challenges</h3>
+    </div>
+
+    {% for challenge in incoming_challenges %}
+    <div class="challenge">
+        <p>
+            <strong>{{ challenge['challenger_name'] }}</strong>
+            challenged you for <strong>K{{ challenge['stake'] }}</strong>.
+        </p>
+        <div class="challenge-actions">
+            <form method="POST"
+                  action="{{ url_for('accept_direct_challenge',
+                                     challenge_id=challenge['id']) }}">
+                <button type="submit">Accept</button>
+            </form>
+            <form method="POST"
+                  action="{{ url_for('decline_direct_challenge',
+                                     challenge_id=challenge['id']) }}">
+                <button class="secondary" type="submit">Decline</button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+        <p class="empty-state">No incoming challenges at the moment.</p>
+    {% endfor %}
+</section>
+
+<section class="card online-players-card">
+    <div class="section-header">
+        <h3>🟢 Online Players</h3>
+    </div>
+    <div class="online-players">
+        {% if online_players and online_players|length > 0 %}
+            <ul>
+                {% for player in online_players %}
+                    <li>
+                        <span class="dot">🟢</span>
+                        <span class="player-name">{{ player['username'] }}</span>
+                        <form method="POST"
+                              action="{{ url_for('send_challenge', user_id=player['id']) }}"
+                              style="display:inline; margin-left: 8px;">
+                            <input type="number" name="stake" min="1" value="10" step="1" required>
+                            <button type="submit">
+                                Challenge
+                            </button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p id="noResults" class="search-empty" style="display:none;">No matching players found.</p>
+        {% else %}
+            <p>No players online right now</p>
+        {% endif %}
+    </div>
+</section>
+
+<section class="card active-challenges-card">
+    <div class="section-header">
+        <h3>⚔ Active Challenges</h3>
+    </div>
+
+    {% for challenge in challenges %}
+        <div class="challenge">
+            <p>
+                <strong>{{ challenge['creator_name'] }}</strong> wants to play
+                for <strong>K{{ challenge['stake'] }}</strong>
+            </p>
+            <div class="challenge-actions">
+                {% if challenge['creator_id'] != session['user_id'] %}
+                <form method="POST" action="{{ url_for('accept_challenge', challenge_id=challenge['id']) }}">
+                    <button type="submit">Accept</button>
+                </form>
+                {% else %}
+                <span class="challenge-status">Open challenge successfully created.</span>
+                {% endif %}
+                {% if challenge['creator_id'] == session['user_id'] %}
+                <form method="POST" action="{{ url_for('cancel_challenge', challenge_id=challenge['id']) }}">
+                    <button class="secondary" type="submit">Cancel</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <p class="empty-state">No active challenges available.</p>
+    {% endfor %}
+</section>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="flash">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+</div>
+
+<script src="{{ url_for('static', filename='js/lobby.js') }}"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+const socket = io();
+
+socket.on("new_challenge", function(data) {
+    alert(
+        "New challenge from " +
+        data.from +
+        ". Refresh the page to Accept or Decline."
+    );
+    location.reload();
+});
+
+socket.on("online_users", function(users) {
+    console.log("Online:", users);
+});
+// when someone accepts your challenge, redirect to the game
+socket.on("challenge_accepted", function(data) {
+    alert(data.from + " accepted your challenge!");
+    if (data.game_id) {
+        window.location.href = '/game/' + data.game_id;
+    }
+});
+</script>
+
+</body>
+</html>

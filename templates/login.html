@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - ZedChess</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
+             alt="ZedChess" 
+             class="zed-knight-logo"
+             style="width: 100px; height: 100px;">
+        <h1 style="margin: 15px 0 5px 0; color: #00ff9d;">ZedChess</h1>
+    </div>
+    <!-- ================================= -->
+
+    <h2>Login</h2>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p class="flash">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <input type="text" name="username" placeholder="Username" required><br>
+        <input type="password" name="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <a href="{{ url_for('signup') }}">Sign Up</a></p>
+
+</div>
+
+</body>
+</html>

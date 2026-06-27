@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up - ZedChess</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Create Account</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p class="flash">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required><br>
+            <input type="email" name="email" placeholder="Email" required><br>
+            <input type="password" name="password" placeholder="Password" required><br>
+            <label class="policy-checkbox">
+                <input type="checkbox" name="accepted_terms" required>
+                I agree to the <a href="{{ url_for('terms') }}" target="_blank">Terms & Conditions</a> and <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.
+            </label>
+            <button type="submit">Sign Up</button>
+        </form>
+        <p class="policy-note">By creating an account, you confirm you have read and agree to our Terms & Conditions and Privacy Policy.</p>
+        <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+    </div>
+</body>
+</html>
