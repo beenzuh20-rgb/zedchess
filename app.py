@@ -32,8 +32,60 @@ app.secret_key = "zedchess-secret-key"
 socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 connected_users = {}
 
-connected_users = {}
+import threading
+import time
 
+def background_timer_tick():
+    while True:
+        time.sleep(1)
+        with app.app_context():
+            db = get_db()
+            active_games = db.execute("SELECT id, white_time, black_time, current_turn FROM games WHERE status='active'").fetchall()
+            
+            for game in active_games:
+                game_id = game['id']
+                if game['current_turn'] == 'white' and game['white_time'] > 0:
+                    new_time = game['white_time'] - 1
+                    db.execute("UPDATE games SET white_time=? WHERE id=?", (new_time, game_id))
+                    if new_time <= 0:
+                        handle_time_out_game(game_id, 'white')
+                elif game['current_turn'] == 'black' and game['black_time'] > 0:
+                    new_time = game['black_time'] - 1
+                    db.execute("UPDATE games SET black_time=? WHERE id=?", (new_time, game_id))
+                    if new_time <= 0:
+                        handle_time_out_game(game_id, 'black')
+            db.commit()
+
+def handle_time_out_game(game_id, color):
+    db = get_db()
+    game = db.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    if not game or game['status'] != 'active':
+        return
+
+    if color == 'white':
+        winner_id = game['player2_id']
+        loser_color = "White"
+    else:
+        winner_id = game['player1_id']
+        loser_color = "Black"
+
+    db.execute("UPDATE games SET status='finished', winner_id=? WHERE id=?", (winner_id, game_id))
+    db.execute("UPDATE users SET wallet = wallet + ? WHERE id=?", (game['bet'], winner_id))
+    db.commit()
+
+    socketio.emit(
+        "game_over",
+        {
+            "reason": f"{loser_color} ran out of time",
+            "winner_id": winner_id,
+            "bet": game['bet']
+        },
+        room=f"game_{game_id}"
+    )
+
+# Start background timer
+timer_thread = threading.Thread(target=background_timer_tick, daemon=True)
+timer_thread.start()
 
 @socketio.on("connect")
 def handle_connect():
@@ -828,6 +880,48 @@ def on_make_move(data):
 # =========================
 # RUN APP
 # =========================
+@socketio.on("time_out")
+def on_time_out(data):
+    """Server authoritative time out handling"""
+    game_id = data["game_id"]
+    db = get_db()
+    game = db.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    
+    if not game or game["status"] != "active":
+        return
+
+    user_id = session.get("user_id")
+    if user_id not in (game["player1_id"], game["player2_id"]):
+        return
+
+    if game["player1_id"] == user_id:
+        winner_id = game["player2_id"]
+        loser_color = "White"
+    else:
+        winner_id = game["player1_id"]
+        loser_color = "Black"
+
+    db.execute(
+        "UPDATE games SET status='finished', winner_id=? WHERE id=?",
+        (winner_id, game_id)
+    )
+    db.execute(
+        "UPDATE users SET wallet = wallet + ? WHERE id=?",
+        (game["bet"], winner_id)
+    )
+    db.commit()
+
+    socketio.emit(
+        "game_over",
+        {
+            "reason": f"{loser_color} ran out of time",
+            "loser_id": user_id,
+            "winner_id": winner_id,
+            "bet": game["bet"],
+        },
+        room=f"game_{game_id}",
+    )
+
 @app.teardown_appcontext
 def close_db(exception=None):
     db = g.pop("db", None)
