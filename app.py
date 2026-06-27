@@ -846,8 +846,5 @@ def close_db(exception=None):
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    socketio.run(app, debug=True, host="0.0.0.0", port=5000)
-=======
-    socketio.run(app, debug=True, host="0.0.0.0", port=5000)
->>>>>>> e710fb63c99f5814eab1aea7f5508ca983660c8e
+    socketio.run(app, debug=True, host="127.0.0.1", port=5000)
+
