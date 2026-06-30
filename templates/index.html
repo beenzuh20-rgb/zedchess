@@ -4,25 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZedChess - Bet & Play</title>
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
 </head>
 <body>
+    <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
+             alt="ZedChess" 
+             class="zed-knight-logo"
+             style="width: 100px; height: 100px;">
+        <h1 style="margin: 15px 0 5px 0; color: #00ff9d;">ZedChess</h1>
+    </div>
+    <!-- ================================= -->
+
     <div class="container">
 
-        <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
-        <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
-                 alt="ZedChess" 
-                 class="zed-knight-logo"
-                 style="width: 110px; height: 110px;">
-            <h1 style="margin: 15px 0 8px 0; color: #00ff9d;">ZedChess</h1>
-            <p>Play Chess • Bet • Win Real Money</p>
-        </div>
-        <!-- ================================= -->
-
-        <a href="{{ url_for('login') }}" class="btn">Login</a>
+        <p>Play Chess • Bet • Win Real Money</p>
+                <a href="{{ url_for('login') }}" class="btn">Login</a>
         <a href="{{ url_for('signup') }}" class="btn">Sign Up</a>
-
     </div>
 </body>
 </html>
