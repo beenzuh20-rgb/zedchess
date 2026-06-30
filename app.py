@@ -1,13 +1,11 @@
-import os
 import datetime
+import os
 import traceback
 from functools import wraps
 
 from flask import Flask, flash, g, redirect, render_template, request, session, url_for
 from flask_socketio import SocketIO, emit, join_room
-
-# === PASSWORD HASHING ===
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import chess
 from database import get_db, init_db
@@ -26,79 +24,24 @@ def log_move_debug(msg):
 
 
 app = Flask(__name__)
-app.secret_key = "zedchess-secret-key"
+app.config.from_object("config.Config")
+app.secret_key = app.config["SECRET_KEY"]
 
 # SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 connected_users = {}
 
-import threading
-import time
-
-def background_timer_tick():
-    while True:
-        time.sleep(1)
-        with app.app_context():
-            db = get_db()
-            active_games = db.execute("SELECT id, white_time, black_time, current_turn FROM games WHERE status='active'").fetchall()
-            
-            for game in active_games:
-                game_id = game['id']
-                if game['current_turn'] == 'white' and game['white_time'] > 0:
-                    new_time = game['white_time'] - 1
-                    db.execute("UPDATE games SET white_time=? WHERE id=?", (new_time, game_id))
-                    if new_time <= 0:
-                        handle_time_out_game(game_id, 'white')
-                elif game['current_turn'] == 'black' and game['black_time'] > 0:
-                    new_time = game['black_time'] - 1
-                    db.execute("UPDATE games SET black_time=? WHERE id=?", (new_time, game_id))
-                    if new_time <= 0:
-                        handle_time_out_game(game_id, 'black')
-            db.commit()
-
-def handle_time_out_game(game_id, color):
-    db = get_db()
-    game = db.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
-    if not game or game['status'] != 'active':
-        return
-
-    if color == 'white':
-        winner_id = game['player2_id']
-        loser_color = "White"
-    else:
-        winner_id = game['player1_id']
-        loser_color = "Black"
-
-    db.execute("UPDATE games SET status='finished', winner_id=? WHERE id=?", (winner_id, game_id))
-    db.execute("UPDATE users SET wallet = wallet + ? WHERE id=?", (game['bet'], winner_id))
-    db.commit()
-
-    socketio.emit(
-        "game_over",
-        {
-            "reason": f"{loser_color} ran out of time",
-            "winner_id": winner_id,
-            "bet": game['bet']
-        },
-        room=f"game_{game_id}"
-    )
-
-# Start background timer
-timer_thread = threading.Thread(target=background_timer_tick, daemon=True)
-timer_thread.start()
 
 @socketio.on("connect")
 def handle_connect():
     if "user_id" in session:
-        user_id = session["user_id"]
-        username = session.get("username")
-        
-        connected_users[user_id] = username
-        join_room(f"user_{user_id}")   # ← Very important
-        
-        print(f"User {username} joined user_{user_id} room")
-        
+        connected_users[session["user_id"]] = session["username"]
+
+        join_room(f"user_{session['user_id']}")
+
         socketio.emit("online_users", list(connected_users.values()))
+
+
 # =========================
 # INIT DATABASE
 # =========================
@@ -133,21 +76,31 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         db = get_db()
-        
         user = db.execute(
             "SELECT * FROM users WHERE username=?", (username,)
         ).fetchone()
-
-        if user and check_password_hash(user["password"], password):
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            connected_users[session["user_id"]] = session["username"]
-            db.execute("UPDATE users SET online=TRUE WHERE id=?", (user["id"],))
-            db.commit()
-            return redirect(url_for("lobby"))
-        
+        if user:
+            # Check with bcrypt first (new users), fall back to plaintext (legacy users)
+            password_valid = check_password_hash(user["password"], password)
+            if not password_valid:
+                password_valid = (user["password"] == password)
+                # Migrate legacy plaintext password to hashed
+                if password_valid:
+                    db.execute(
+                        "UPDATE users SET password=? WHERE id=?",
+                        (generate_password_hash(password), user["id"]),
+                    )
+                    db.commit()
+            if password_valid:
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                connected_users[session["user_id"]] = session["username"]
+                db.execute("UPDATE users SET online=TRUE WHERE id=?", (user["id"],))
+                db.commit()
+                return redirect(url_for("lobby"))
         flash("Invalid username or password")
     return render_template("login.html")
+
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -163,20 +116,18 @@ def signup():
 
         db = get_db()
         try:
-            # Hash the password before saving
-            hashed_password = generate_password_hash(password)
-            
+            hashed_pw = generate_password_hash(password)
             db.execute(
                 "INSERT INTO users (username, email, password, accepted_terms) VALUES (?, ?, ?, ?)",
-                (username, email, hashed_password, int(accepted_terms)),
+                (username, email, hashed_pw, int(accepted_terms)),
             )
             db.commit()
-            flash("Account created successfully! Please login.")
+            flash("Account created. Please login")
             return redirect(url_for("login"))
-        except Exception as e:
-            print(e)
+        except Exception:
             flash("Username or email already exists")
     return render_template("signup.html")
+
 
 @app.route("/terms")
 def terms():
@@ -373,7 +324,6 @@ def invite_player():
 @login_required
 def accept_challenge(challenge_id):
     db = get_db()
-    
     challenge = db.execute(
         "SELECT * FROM challenges WHERE id=? AND status='waiting'",
         (challenge_id,),
@@ -411,28 +361,19 @@ def accept_challenge(challenge_id):
     )
 
     game_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-    if not game_id:
-        row = db.execute("SELECT id FROM games ORDER BY id DESC LIMIT 1").fetchone()
-        game_id = row[0] if row else None
-
-    if not game_id:
-        flash("Failed to create game.")
-        return redirect(url_for("lobby"))
-
     db.execute("UPDATE challenges SET status='accepted' WHERE id=?", (challenge_id,))
     db.commit()
-
+    # notify the creator that their open challenge was accepted so they can join the game
     socketio.emit(
         "challenge_accepted",
         {"from": session["username"], "game_id": game_id},
         to=f"user_{white_id}",
     )
-    
-    # FIXED BROADCAST
-    socketio.emit("lobby_refresh", {}, to=None)
+    socketio.emit("lobby_refresh", {})
 
     return redirect(url_for("game", game_id=game_id))
+
+
 @app.route("/accept_direct_challenge/<int:challenge_id>", methods=["POST"])
 @login_required
 def accept_direct_challenge(challenge_id):
@@ -499,17 +440,7 @@ def accept_direct_challenge(challenge_id):
         ),
     )
 
-    # FIXED: Reliable way to get the new game ID
     game_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-    # Extra safety fallback
-    if not game_id:
-        row = db.execute("SELECT id FROM games ORDER BY id DESC LIMIT 1").fetchone()
-        game_id = row[0] if row else None
-
-    if not game_id:
-        flash("Failed to create game.")
-        return redirect(url_for("lobby"))
 
     db.execute(
         """
@@ -528,6 +459,8 @@ def accept_direct_challenge(challenge_id):
     )
 
     return redirect(url_for("game", game_id=game_id))
+
+
 @app.route("/decline_direct_challenge/<int:challenge_id>", methods=["POST"])
 @login_required
 def decline_direct_challenge(challenge_id):
@@ -545,12 +478,11 @@ def decline_direct_challenge(challenge_id):
             "UPDATE direct_challenges SET status='declined' WHERE id=?", (challenge_id,)
         )
         db.commit()
-        
-        # FIXED: Correct SocketIO broadcast
-    socketio.emit("lobby_refresh", {}, broadcast=True, namespace='/')
+        socketio.emit("lobby_refresh", {})
 
     flash("Challenge declined.")
     return redirect(url_for("lobby"))
+
 
 @app.route("/game/<int:game_id>")
 @login_required
@@ -802,6 +734,7 @@ def on_make_move(data):
         elif stalemate:
             status = "finished"
             result = "draw by stalemate"
+            winner_id = None
             db.execute(
                 "UPDATE users SET wallet = wallet + ? WHERE id=?",
                 (game["bet"] / 2, game["player1_id"]),
@@ -813,6 +746,7 @@ def on_make_move(data):
         else:
             status = "active"
             result = None
+            winner_id = None
 
         next_turn = "black" if player_color == "white" else "white"
 
@@ -840,10 +774,10 @@ def on_make_move(data):
             SET board_state = ?,
                 current_turn = ?,
                 status = ?,
-                winner_id = COALESCE(winner_id, NULL)
+                winner_id = COALESCE(?, NULL)
             WHERE id = ?
         """,
-            (board.fen(), next_turn, status, game_id),
+            (board.fen(), next_turn, status, winner_id, game_id),
         )
         db.commit()
 
@@ -882,54 +816,12 @@ def on_make_move(data):
 # =========================
 # RUN APP
 # =========================
-@socketio.on("time_out")
-def on_time_out(data):
-    """Server authoritative time out handling"""
-    game_id = data["game_id"]
-    db = get_db()
-    game = db.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
-    
-    if not game or game["status"] != "active":
-        return
-
-    user_id = session.get("user_id")
-    if user_id not in (game["player1_id"], game["player2_id"]):
-        return
-
-    if game["player1_id"] == user_id:
-        winner_id = game["player2_id"]
-        loser_color = "White"
-    else:
-        winner_id = game["player1_id"]
-        loser_color = "Black"
-
-    db.execute(
-        "UPDATE games SET status='finished', winner_id=? WHERE id=?",
-        (winner_id, game_id)
-    )
-    db.execute(
-        "UPDATE users SET wallet = wallet + ? WHERE id=?",
-        (game["bet"], winner_id)
-    )
-    db.commit()
-
-    socketio.emit(
-        "game_over",
-        {
-            "reason": f"{loser_color} ran out of time",
-            "loser_id": user_id,
-            "winner_id": winner_id,
-            "bet": game["bet"],
-        },
-        room=f"game_{game_id}",
-    )
-
 @app.teardown_appcontext
 def close_db(exception=None):
     db = g.pop("db", None)
     if db is not None:
         db.close()
 
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=False)
+    socketio.run(app, debug=True, host="127.0.0.1", port=5000)
