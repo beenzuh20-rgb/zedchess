@@ -3,6 +3,7 @@
 <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Game #{{ game['id'] }} - ZedChess</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
@@ -21,7 +22,6 @@
         }
 
         .captures,
-        .timers,
         .game-info,
         .scoreboard {
             background-color: #242424;
@@ -30,7 +30,6 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .timers div,
         .captures div,
         .scoreboard div {
             margin-bottom: 10px;
@@ -54,6 +53,126 @@
             color: #00cc66;
         }
 
+        /* ===== LICHESS-STYLE TIMERS ===== */
+        .timer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 0 auto;
+            width: min(100%, 600px);
+        }
+
+        .timer-bar {
+            position: relative;
+            width: 100%;
+            height: 8px;
+            background-color: #2a2a2a;
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        .timer-bar-fill {
+            height: 100%;
+            width: 100%;
+            background-color: #00cc66;
+            transition: width 0.3s linear, background-color 0.3s ease;
+            border-radius: 0;
+        }
+
+        .timer-bar-fill.low {
+            background-color: #ffd700;
+        }
+
+        .timer-bar-fill.critical {
+            background-color: #ff4444;
+            animation: pulse-bar 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-bar {
+            0% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        .timer-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: #1a1a1a;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .timer-display.active {
+            background-color: #1e2a1e;
+            border-color: #00cc66;
+        }
+
+        .timer-display .player-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #b0b0b0;
+        }
+
+        .timer-display.active .player-name {
+            color: #ffffff;
+        }
+
+        .timer-display .player-name .dot-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #555;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .timer-display.active .player-name .dot-indicator {
+            background-color: #00cc66;
+            box-shadow: 0 0 6px #00cc66;
+        }
+
+        .timer-time {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+            color: #e0e0e0;
+            transition: color 0.3s ease;
+        }
+
+        .timer-time.low {
+            color: #ffd700;
+        }
+
+        .timer-time.critical {
+            color: #ff4444;
+            animation: flash-time 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes flash-time {
+            0% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        .timer-time.flag {
+            color: #ff2222;
+            animation: flash-flag 0.3s ease-in-out infinite alternate;
+        }
+
+        @keyframes flash-flag {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.5; transform: scale(1.05); }
+        }
+
+        .timer-increment {
+            font-size: 0.8rem;
+            color: #888;
+            margin-left: 8px;
+        }
+
         .chessboard {
             display: grid;
             grid-template-columns: repeat(8, minmax(50px, 1fr));
@@ -72,6 +191,8 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .square .coord {
@@ -125,69 +246,187 @@
             cursor: pointer;
         }
 
-        @media (max-width: 820px) {
+        /* ===== RESPONSIVE: TABLETS & PHONES ===== */
+        @media (max-width: 900px) {
+            .container {
+                margin: 10px;
+                padding: 12px;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.2rem;
+            }
             .game-grid {
                 grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .chessboard {
+                border-width: 10px;
+                max-width: 100%;
+            }
+            .square {
+                font-size: min(3rem, 8vw);
+            }
+            .square .coord {
+                font-size: 0.5rem;
+                top: 1px;
+                left: 2px;
+            }
+            .timer-time {
+                font-size: 1.4rem;
+            }
+            .timer-display {
+                padding: 6px 12px;
+            }
+            .timer-display .player-name {
+                font-size: 0.85rem;
+            }
+            .timer-bar {
+                height: 6px;
+            }
+            .captures,
+            .game-info,
+            .scoreboard {
+                padding: 12px;
+            }
+            .scoreboard .score-item {
+                font-size: 0.85rem;
+            }
+            .game-buttons button {
+                padding: 10px 18px;
+                font-size: 15px;
+            }
+            .game-buttons a.btn.secondary {
+                padding: 10px 18px !important;
+                font-size: 15px !important;
             }
         }
 
-        /* === 3D ZAMBIAN KNIGHT LOGO === */
-.zed-knight-logo {
-    filter: 
-        drop-shadow(4px 10px 15px rgba(0, 0, 0, 0.7))
-        drop-shadow(0 0 20px rgba(255, 140, 0, 0.7))
-        brightness(1.25)
-        contrast(1.3)
-        hue-rotate(92deg)
-        saturate(2.2);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(255,255,255,0.1);
-    border-radius: 16px;
-    padding: 8px;
-}
-
-.zed-knight-logo:hover {
-    transform: scale(1.15) rotate(12deg) translateY(-5px);
-    filter: 
-        drop-shadow(6px 14px 22px rgba(0, 0, 0, 0.8))
-        drop-shadow(0 0 30px rgba(255, 140, 0, 0.9))
-        brightness(1.35)
-        hue-rotate(80deg)
-        saturate(2.5);
-}
-
-
+        @media (max-width: 480px) {
+            .container {
+                margin: 5px;
+                padding: 8px;
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 1.4rem;
+                margin-bottom: 10px;
+            }
+            h2 {
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+            .game-grid {
+                gap: 8px;
+            }
+            .game-panel {
+                gap: 8px;
+            }
+            .chessboard {
+                border-width: 6px;
+            }
+            .square {
+                font-size: min(2.5rem, 10vw);
+            }
+            .square .coord {
+                display: none;
+            }
+            .selected {
+                outline: 3px solid gold;
+            }
+            .timer-time {
+                font-size: 1.2rem;
+            }
+            .timer-display {
+                padding: 4px 10px;
+            }
+            .timer-display .player-name {
+                font-size: 0.75rem;
+            }
+            .timer-display .player-name .dot-indicator {
+                width: 6px;
+                height: 6px;
+                margin-right: 5px;
+            }
+            .timer-bar {
+                height: 5px;
+            }
+            .captures,
+            .game-info,
+            .scoreboard {
+                padding: 10px;
+                border-radius: 8px;
+            }
+            .captures div,
+            .scoreboard div {
+                margin-bottom: 6px;
+            }
+            .captures {
+                font-size: 0.85rem;
+            }
+            .scoreboard .score-item {
+                font-size: 0.8rem;
+                gap: 3px;
+            }
+            .game-buttons {
+                gap: 6px;
+                margin-top: 10px;
+            }
+            .game-buttons button {
+                padding: 8px 14px;
+                font-size: 13px;
+                border-radius: 6px;
+            }
+            .game-buttons a.btn.secondary {
+                padding: 8px 14px !important;
+                font-size: 13px !important;
+                border-radius: 6px !important;
+            }
+            .flash {
+                padding: 6px;
+                font-size: 0.85rem;
+                margin: 8px 0;
+            }
+            p {
+                font-size: 0.85rem;
+                margin-bottom: 8px;
+            }
+            .logo-svg {
+                width: 40px;
+                height: 40px;
+            }
+            .logo-text {
+                font-size: 1rem !important;
+            }
+        }
     </style>
 </head>
-
 <body>
 
 <div class="container">
 
-    <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
-    <div style="text-align: center; margin-bottom: 20px;">
-        <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
-             alt="ZedChess" 
-             class="zed-knight-logo"
-             style="width: 90px; height: 90px;">
-        <h1 style="margin: 10px 0 5px 0; color: #00ff9d;">ZedChess</h1>
-    </div>
-    <!-- ================================= -->
+    
+    <h1>♟ Game Started!</h1>
 
-<h1>♟ Game Started!</h1>
     <h2>
         {{ game['p1_name'] }} 
         VS 
         {{ game['p2_name'] }}
     </h2>
 
-    <p>Stake: K{{ game['bet'] }}</p>
-
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="flash">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <div class="flash">
         🔥 Match is LIVE
     </div>
-
 
     <p>
         <strong>{{ game['p1_name'] }}</strong> (White) 
@@ -195,20 +434,35 @@
         <strong>{{ game['p2_name'] }}</strong> (Black)
     </p>
 
-
     <p>Stake: K{{ game['bet'] }}</p>
-
 
     <div class="game-grid">
         <div class="game-panel">
+            <!-- TIMER: Black (top) -->
+            <div id="timerBlack" class="timer-display">
+                <span class="player-name"><span class="dot-indicator"></span>{{ game['p2_name'] }}</span>
+                <span class="timer-time" id="blackTimeDisplay">10:00</span>
+            </div>
+            <div class="timer-bar" id="blackBar">
+                <div class="timer-bar-fill" id="blackBarFill"></div>
+            </div>
+
             <div class="chessboard" id="board"></div>
+
+            <!-- TIMER: White (bottom) -->
+            <div class="timer-bar" id="whiteBar">
+                <div class="timer-bar-fill" id="whiteBarFill"></div>
+            </div>
+            <div id="timerWhite" class="timer-display">
+                <span class="player-name"><span class="dot-indicator"></span>{{ game['p1_name'] }}</span>
+                <span class="timer-time" id="whiteTimeDisplay">10:00</span>
+            </div>
+
             <div class="game-buttons">
                 <form id="forfeitForm" action="{{ url_for('forfeit', game_id=game['id']) }}" method="post">
                     <button type="submit">Forfeit</button>
                 </form>
-                <form id="backToLobbyForm" action="{{ url_for('forfeit', game_id=game['id']) }}" method="post">
-                    <button type="submit">Back to Lobby</button>
-                </form>
+                <a href="{{ url_for('lobby') }}" class="btn secondary" style="background-color: #555; color: white; padding: 12px 25px; border-radius: 8px; font-size: 18px; text-decoration: none; display: inline-block;">Back to Lobby</a>
             </div>
         </div>
         <div class="game-panel">
@@ -216,12 +470,6 @@
                 <div><strong>White captured:</strong> <span id="whiteCaptures"></span></div>
                 <div><strong>Black captured:</strong> <span id="blackCaptures"></span></div>
             </div>
-            <div class="timers">
-    <div><strong>Your color:</strong> <span id="myColor"></span></div>
-    <div><strong>White time:</strong> <span id="whiteTime"></span></div>
-    <div><strong>Black time:</strong> <span id="blackTime"></span></div>
-    <div><strong>Your remaining:</strong> <span id="myTimeDisplay" style="font-size:1.3em; font-weight:bold;"></span></div>
-</div>
             <div class="scoreboard">
                 <div class="score-item">
                     <strong>Game ID</strong>
@@ -248,9 +496,14 @@
     </div>
 
 </div>
+
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 const boardDiv = document.getElementById('board');
+const turnInfo = document.getElementById('turnInfo');
+const statusInfo = document.getElementById('statusInfo');
+const scoreTurn = document.getElementById('scoreTurn');
+const scoreStatus = document.getElementById('scoreStatus');
 const FILES = 'abcdefgh';
 
 let fen = {{ game["board_state"]|tojson }};
@@ -259,7 +512,12 @@ let gameStatus = 'active';
 let gameResult = null;
 let whiteTime = {{ game['white_time']|tojson }};
 let blackTime = {{ game['black_time']|tojson }};
+var turnStart = Date.now();
 let timerInterval = null;
+var timerEnabled = false; // Only start ticking after both players have moved
+var moveCount = 0; // Track number of moves made
+
+const TOTAL_TIME = 600; // 10 minutes (used for progress bar percentage)
 
 const socket = io();
 const GAME_ID = {{ game['id']|tojson }};
@@ -268,41 +526,226 @@ const WHITE_ID = {{ game['player1_id']|tojson }};
 const MY_COLOR = Number(MY_ID) === Number(WHITE_ID) ? 'white' : 'black';
 let selectedSquare = null;
 
-function formatTime(sec){
-    const m = Math.floor(sec/60).toString().padStart(2,'0');
-    const s = Math.floor(sec%60).toString().padStart(2,'0');
+// DOM refs for timers
+const whiteTimeDisplay = document.getElementById('whiteTimeDisplay');
+const blackTimeDisplay = document.getElementById('blackTimeDisplay');
+const whiteBarFill = document.getElementById('whiteBarFill');
+const blackBarFill = document.getElementById('blackBarFill');
+const timerWhite = document.getElementById('timerWhite');
+const timerBlack = document.getElementById('timerBlack');
+
+const forfeitForm = document.getElementById('forfeitForm');
+if (forfeitForm) {
+    forfeitForm.addEventListener('submit', (event) => {
+        const confirmed = confirm('Are you sure you want to forfeit? This cannot be undone.');
+        if (!confirmed) {
+            event.preventDefault();
+        }
+    });
+}
+
+const lobbyLink = document.querySelector('.btn.secondary');
+if (lobbyLink) {
+    lobbyLink.addEventListener('click', (event) => {
+        if (gameStatus === 'active') {
+            event.preventDefault();
+            alert('Game in progress. You must forfeit or finish the game first.');
+        }
+    });
+}
+
+// ========== TIMER LOGIC ==========
+
+function formatTime(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
 }
 
+function formatTimeMs(sec) {
+    // Show tenths of a second when below 20 seconds
+    if (sec < 20) {
+        const t = Math.max(sec, 0);
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60);
+        const ds = Math.floor((t % 1) * 10);
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ds}`;
+    }
+    return formatTime(sec);
+}
+
+function applyUrgencyClasses(el, barEl, seconds) {
+    // Remove all classes
+    el.classList.remove('low', 'critical', 'flag');
+    barEl.classList.remove('low', 'critical');
+
+    if (seconds <= 0) {
+        el.classList.add('flag');
+    } else if (seconds <= 10) {
+        el.classList.add('critical');
+        barEl.classList.add('critical');
+    } else if (seconds <= 30) {
+        el.classList.add('low');
+        barEl.classList.add('low');
+    }
+}
+
+function updateTimerDisplays() {
+    // Apply urgency styling
+    applyUrgencyClasses(whiteTimeDisplay, whiteBarFill, whiteTime);
+    applyUrgencyClasses(blackTimeDisplay, blackBarFill, blackTime);
+
+    // Format time (with tenths if under 20s)
+    whiteTimeDisplay.textContent = formatTimeMs(whiteTime);
+    blackTimeDisplay.textContent = formatTimeMs(blackTime);
+
+    // Progress bar width
+    const whitePct = Math.max(0, Math.min(100, (whiteTime / TOTAL_TIME) * 100));
+    const blackPct = Math.max(0, Math.min(100, (blackTime / TOTAL_TIME) * 100));
+    whiteBarFill.style.width = whitePct + '%';
+    blackBarFill.style.width = blackPct + '%';
+
+    // Active player highlight
+    timerWhite.classList.toggle('active', gameTurn === 'white');
+    timerBlack.classList.toggle('active', gameTurn === 'black');
+}
+
+function tickTimers() {
+    if (gameStatus !== 'active') {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        return;
+    }
+
+    // Don't tick until both players have made their first move
+    if (!timerEnabled) {
+        return;
+    }
+
+    const now = Date.now();
+    // Delta since last tick (or since turnStart if first tick)
+    const lastTick = timerLastTick || turnStart;
+    const deltaSec = (now - lastTick) / 1000;
+    timerLastTick = now;
+
+    if (gameTurn === 'white') {
+        whiteTime = Math.max(0, whiteTime - deltaSec);
+    } else {
+        blackTime = Math.max(0, blackTime - deltaSec);
+    }
+
+    updateTimerDisplays();
+
+    // Check for flag fall
+    if ((gameTurn === 'white' && whiteTime <= 0) || (gameTurn === 'black' && blackTime <= 0)) {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+}
+
+let timerLastTick = null;
+
+function startTimerTick() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    timerLastTick = null;
+    timerInterval = setInterval(tickTimers, 100);
+}
+
+// ========== STATUS & INFO ==========
+
 function updateStatus() {
-    document.getElementById('myColor').textContent = MY_COLOR;
-    document.getElementById('whiteTime').textContent = formatTime(whiteTime);
-    document.getElementById('blackTime').textContent = formatTime(blackTime);
-    document.getElementById('myTimeDisplay').textContent = formatTime(MY_COLOR === 'white' ? whiteTime : blackTime);
+    if (turnInfo) turnInfo.textContent = `You are ${MY_COLOR}. Current turn: ${gameTurn}.`;
+    if (statusInfo) statusInfo.textContent = gameStatus === 'active'
+        ? `Game is live. Play your move.`
+        : `Game finished: ${gameResult || 'ended'}`;
+    if (scoreTurn) {
+        scoreTurn.textContent = gameTurn;
+    }
+    if (scoreStatus) {
+        scoreStatus.textContent = gameStatus === 'active' ? 'Live' : gameResult || 'Finished';
+    }
 }
 
-function startRealChessTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    
-    timerInterval = setInterval(() => {
-        if (gameStatus !== 'active') return;
+// ========== SOCKET EVENTS ==========
 
-        if (gameTurn === 'white') whiteTime = Math.max(0, whiteTime - 1);
-        else blackTime = Math.max(0, blackTime - 1);
+socket.on('connect', () => {
+    console.log('Socket connected to game server');
+    socket.emit('join_game', { game_id: GAME_ID });
+});
 
-        document.getElementById('whiteTime').textContent = formatTime(whiteTime);
-        document.getElementById('blackTime').textContent = formatTime(blackTime);
+socket.on('disconnect', () => {
+    console.log('Socket disconnected');
+});
 
-        const myDisplay = document.getElementById('myTimeDisplay');
-        const current = MY_COLOR === 'white' ? whiteTime : blackTime;
-        myDisplay.textContent = formatTime(current);
+socket.on('connect_error', (error) => {
+    console.error('Socket connect error:', error);
+});
 
-        if (current <= 30) myDisplay.style.color = '#ff4444';
-        else myDisplay.style.color = '';
-    }, 1000);
-}
+socket.on('move_made', (data) => {
+    fen = data.fen;
+    gameTurn = data.next_turn;
+    gameStatus = data.status;
+    gameResult = data.result;
+    // update timers if sent
+    if (data.white_time !== undefined) whiteTime = data.white_time;
+    if (data.black_time !== undefined) blackTime = data.black_time;
+    renderBoard();
+    updateStatus();
+    updateCapturedPieces();
+    updateTimerDisplays();
 
-// === YOUR ORIGINAL BOARD FUNCTIONS (keep them here) ===
+    if (data.check) {
+        alert('CHECK!');
+    }
+    if (data.checkmate || data.stalemate) {
+        alert(data.result);
+    }
+
+    // Enable timer after both players have made their first move
+    moveCount++;
+    if (moveCount >= 2) {
+        timerEnabled = true;
+    }
+
+    // Reset turnStart for the new turn
+    turnStart = Date.now();
+    startTimerTick();
+});
+
+socket.on('game_over', (data) => {
+    gameStatus = 'finished';
+    gameResult = data.reason;
+    updateStatus();
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+
+    if (data.loser_id !== undefined && data.winner_id !== undefined && data.bet !== undefined) {
+        if (Number(MY_ID) === Number(data.loser_id)) {
+            alert('Game over: you have forfeited the game, you lose!');
+        } else if (Number(MY_ID) === Number(data.winner_id)) {
+            alert(`Game over: ${data.reason}. You win K${data.bet}!`);
+        } else {
+            alert(`Game over: ${data.reason}`);
+        }
+    } else {
+        alert(`Game over: ${data.reason}`);
+    }
+});
+
+socket.on('invalid_move', (data) => {
+    alert(data.reason);
+});
+
+// ========== BOARD RENDERING ==========
+
 function buildBoardMatrix() {
     const ranks = fen.split(' ')[0].split('/');
     const matrix = [];
@@ -311,7 +754,9 @@ function buildBoardMatrix() {
         for (const char of rankStr) {
             if (!isNaN(char)) {
                 const count = parseInt(char, 10);
-                for (let i = 0; i < count; i++) row.push('');
+                for (let i = 0; i < count; i++) {
+                    row.push('');
+                }
             } else {
                 row.push(char);
             }
@@ -325,7 +770,7 @@ function renderBoard() {
     boardDiv.innerHTML = '';
     const boardMatrix = buildBoardMatrix();
     const flipped = MY_COLOR === 'black';
-    const rankOrder = flipped ? [1,2,3,4,5,6,7,8] : [8,7,6,5,4,3,2,1];
+    const rankOrder = flipped ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
     const fileOrder = flipped ? [...FILES].reverse() : [...FILES];
 
     for (const rank of rankOrder) {
@@ -339,7 +784,6 @@ function renderBoard() {
 }
 
 function createSquare(piece, rank, fileIndex, fileChar) {
-    // Your original createSquare function here
     const square = document.createElement('div');
     const isLight = ((rank + fileIndex) % 2) === 0;
     square.className = `square ${isLight ? 'light' : 'dark'}`;
@@ -348,57 +792,123 @@ function createSquare(piece, rank, fileIndex, fileChar) {
     square.dataset.piece = piece || '';
     square.title = squareName;
 
-    const pieces = {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+    const pieces = {
+        K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
+        k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟'
+    };
+
     const coordSpan = document.createElement('span');
     coordSpan.className = 'coord';
     coordSpan.textContent = squareName;
     square.appendChild(coordSpan);
 
-    if (pieces[piece]) square.appendChild(document.createTextNode(pieces[piece]));
+    if (pieces[piece]) {
+        square.appendChild(document.createTextNode(pieces[piece]));
+    }
 
-    if (piece && 'KQRBNP'.includes(piece)) square.classList.add('white-piece');
-    if (piece && 'kqrbnp'.includes(piece)) square.classList.add('black-piece');
+    if (piece && 'KQRBNP'.includes(piece)) {
+        square.classList.add('white-piece');
+    }
+    if (piece && 'kqrbnp'.includes(piece)) {
+        square.classList.add('black-piece');
+    }
 
     square.addEventListener('click', () => {
-        // your move logic...
+        if (gameStatus !== 'active') return;
+
+        // selecting own piece
+        if (!selectedSquare) {
+            if (!piece) return;
+            if ((MY_COLOR === 'white' && piece === piece.toLowerCase()) || (MY_COLOR === 'black' && piece === piece.toUpperCase())) {
+                alert('Please select your own piece.');
+                return;
+            }
+            selectedSquare = square;
+            square.classList.add('selected');
+            return;
+        }
+
+        // second click: make move
+        const from = selectedSquare.dataset.square;
+        const to = square.dataset.square;
+        selectedSquare.classList.remove('selected');
+        const fromPiece = selectedSquare.dataset.piece;
+        selectedSquare = null;
+
+        if (from && to && from !== to) {
+            if (MY_COLOR !== gameTurn) { alert('Not your turn yet.'); return; }
+
+            // Pause timer immediately - stop ticking the current player's clock
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            const elapsed = Math.floor((Date.now() - turnStart) / 1000);
+            // Deduct elapsed locally so the display is accurate immediately
+            if (gameTurn === 'white') {
+                whiteTime = Math.max(0, whiteTime - elapsed);
+            } else {
+                blackTime = Math.max(0, blackTime - elapsed);
+            }
+            updateTimerDisplays();
+
+            // Detect pawn promotion: white pawn reaches rank 8, black pawn reaches rank 1
+            let moveUci = `${from}${to}`;
+            const pieceChar = fromPiece;
+            const toRank = to[1];
+            if ((pieceChar === 'P' && toRank === '8') || (pieceChar === 'p' && toRank === '1')) {
+                moveUci += 'q';  // Auto-promote to queen
+            }
+            const movePayload = { game_id: GAME_ID, move: moveUci, elapsed: elapsed };
+            console.log('emitting move', movePayload);
+            socket.emit('make_move', movePayload, (response) => {
+                if (response && response.error) {
+                    alert(response.error);
+                    // If move was rejected, resume the timer
+                    turnStart = Date.now();
+                    startTimerTick();
+                }
+            });
+        }
     });
 
     boardDiv.appendChild(square);
 }
 
-function updateCapturedPieces() {
-    // your original function
+function updateCapturedPieces(){
+    // compute captured pieces by comparing counts to starting position
+    const startCounts = {P:8,R:2,N:2,B:2,Q:1,K:1, p:8,r:2,n:2,b:2,q:1,k:1};
+    const curCounts = {};
+    const fenPieces = fen.split(' ')[0];
+    for (let ch of fenPieces){ if (/[A-Za-z]/.test(ch)){ curCounts[ch] = (curCounts[ch]||0)+1; } }
+    const whiteCaptured = [];  // black pieces captured by white
+    const blackCaptured = [];  // white pieces captured by black
+    for (let p of Object.keys(startCounts)){
+        const have = curCounts[p]||0;
+        const missing = startCounts[p]-have;
+        if (missing>0){
+            if (p === p.toUpperCase()){
+                // White piece missing -> captured by black
+                for (let i = 0; i < missing; i++) blackCaptured.push(p);
+            } else {
+                // Black piece missing -> captured by white
+                for (let i = 0; i < missing; i++) whiteCaptured.push(p);
+            }
+        }
+    }
+    // render as unicode
+    const map = {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+    document.getElementById('whiteCaptures').textContent = whiteCaptured.map(p=>map[p]||p).join(' ');
+    document.getElementById('blackCaptures').textContent = blackCaptured.map(p=>map[p]||p).join(' ');
 }
 
-// Initialize everything
+// ========== INIT ==========
 updateStatus();
 renderBoard();
 updateCapturedPieces();
-startRealChessTimer();
-
-// Socket listeners
-socket.on('move_made', (data) => {
-    fen = data.fen;
-    gameTurn = data.next_turn;
-    gameStatus = data.status;
-    gameResult = data.result;
-
-    if (data.white_time !== undefined) whiteTime = data.white_time;
-    if (data.black_time !== undefined) blackTime = data.black_time;
-
-    renderBoard();
-    updateStatus();
-    updateCapturedPieces();
-    startRealChessTimer();
-});
-
-socket.on('game_over', (data) => {
-    gameStatus = 'finished';
-    gameResult = data.reason;
-    updateStatus();
-    if (timerInterval) clearInterval(timerInterval);
-});
-
+updateTimerDisplays();
+startTimerTick();
 </script>
 
 </body>
