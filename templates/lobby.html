@@ -10,23 +10,25 @@
 
 <div class="container">
 
-              <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
     <div class="lobby-topbar">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
-                 alt="ZedChess" 
-                 class="zed-knight-logo"
-                 style="width: 80px; height: 80px;">
-            <div>
-                <h1 style="margin: 0; color: #00ff9d;">ZedChess Lobby</h1>
-                <p class="subheading">Invite players, launch open matches, and manage your current challenges.</p>
-            </div>
+        <div>
+            
+            <h1>♟ Lobby</h1>
+            
+            <p class="subheading">Invite players, launch open matches, and manage your current challenges.</p>
         </div>
         <a href="{{ url_for('profile') }}" class="btn secondary">← Back To Profile</a>
     </div>
-    <!-- ============================================ -->
-    <!-- ============================================ -->
 
+      <!-- === 3D ZAMBIAN KNIGHT LOGO === -->
+    <div style="text-align: center; margin-bottom: 30px;">
+        <img src="https://www.svgrepo.com/show/320070/chess-knight.svg" 
+             alt="ZedChess" 
+             class="zed-knight-logo"
+             style="width: 100px; height: 100px;">
+        <h1 style="margin: 15px 0 5px 0; color: #00ff9d;">ZedChess</h1>
+    </div>
+    <!-- ================================= -->
     <div class="lobby-grid">
         <div class="lobby-panel">
             <div class="card invite-card">
@@ -171,20 +173,26 @@
 <script>
 const socket = io();
 
+socket.on("new_challenge", function(data) {
+    alert(
+        "New challenge from " +
+        data.from +
+        ". Refresh the page to Accept or Decline."
+    );
+    location.reload();
+});
+
+socket.on("online_users", function(users) {
+    console.log("Online:", users);
+});
+// when someone accepts your challenge, redirect to the game
 socket.on("challenge_accepted", function(data) {
-    console.log("Challenge accepted event received:", data);
-    
+    alert(data.from + " accepted your challenge!");
     if (data.game_id) {
-        // Better user experience
-        const message = data.from + " has accepted your challenge! Taking you to the game...";
-        alert(message);
-        
-        // Small delay to let alert show
-        setTimeout(() => {
-            window.location.href = '/game/' + data.game_id;
-        }, 800);
+        window.location.href = '/game/' + data.game_id;
     }
 });
 </script>
+
 </body>
 </html>
